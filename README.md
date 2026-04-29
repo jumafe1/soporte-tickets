@@ -155,7 +155,6 @@ http://127.0.0.1:8000/admin/
 ## Notas
 
 - La base de datos local es SQLite y se crea automáticamente con `migrate`.
-- El archivo `.env` no se sube al repositorio. Se crea localmente copiando `.env.example`.
 - Si se borra la base de datos, se puede reconstruir ejecutando otra vez:
 
 ```bash
