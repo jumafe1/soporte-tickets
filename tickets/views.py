@@ -11,7 +11,7 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
 
 from .forms import TicketForm
-from .models import Ticket
+from .models import Categoria, Ticket
 
 
 RESPUESTA_ADMIN_MAX_LENGTH = 150
@@ -102,15 +102,106 @@ class KanbanView(StaffRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         base_queryset = Ticket.objects.select_related("categoria", "usuario").order_by("-fecha_creacion")
+        categorias = Categoria.objects.order_by("nombre").annotate(ticket_count=Count("ticket"))
         context.update(
             {
                 "abiertos": base_queryset.filter(estado=Ticket.Estado.ABIERTO),
                 "en_espera": base_queryset.filter(estado=Ticket.Estado.EN_ESPERA),
                 "aprobados": base_queryset.filter(estado=Ticket.Estado.APROBADO),
                 "rechazados": base_queryset.filter(estado=Ticket.Estado.RECHAZADO),
+                "categorias": categorias,
             }
         )
         return context
+
+
+class CategoriaListCreateView(StaffRequiredMixin, View):
+    http_method_names = ["get", "post"]
+
+    def get(self, request):
+        categorias = list(
+            Categoria.objects.order_by("nombre")
+            .annotate(ticket_count=Count("ticket"))
+            .values("id", "nombre", "ticket_count")
+        )
+        return JsonResponse({"success": True, "categorias": categorias})
+
+    def post(self, request):
+        try:
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "error": "JSON invalido."}, status=400)
+
+        nombre = (payload.get("nombre") or "").strip()
+        if not nombre:
+            return JsonResponse({"success": False, "error": "El nombre de la categoría es obligatorio."}, status=400)
+        if len(nombre) > 100:
+            return JsonResponse({"success": False, "error": "La categoría no puede superar 100 caracteres."}, status=400)
+        if Categoria.objects.filter(nombre__iexact=nombre).exists():
+            return JsonResponse({"success": False, "error": "Ya existe una categoría con ese nombre."}, status=400)
+
+        categoria = Categoria.objects.create(nombre=nombre)
+        return JsonResponse(
+            {
+                "success": True,
+                "categoria": {
+                    "id": categoria.id,
+                    "nombre": categoria.nombre,
+                    "ticket_count": 0,
+                },
+            }
+        )
+
+
+class CategoriaUpdateDeleteView(StaffRequiredMixin, View):
+    http_method_names = ["post", "delete"]
+
+    def post(self, request, pk):
+        try:
+            categoria = Categoria.objects.get(pk=pk)
+            payload = json.loads(request.body.decode("utf-8") or "{}")
+        except Categoria.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Categoría no encontrada."}, status=400)
+        except json.JSONDecodeError:
+            return JsonResponse({"success": False, "error": "JSON invalido."}, status=400)
+
+        nombre = (payload.get("nombre") or "").strip()
+        if not nombre:
+            return JsonResponse({"success": False, "error": "El nombre de la categoría es obligatorio."}, status=400)
+        if len(nombre) > 100:
+            return JsonResponse({"success": False, "error": "La categoría no puede superar 100 caracteres."}, status=400)
+        if Categoria.objects.filter(nombre__iexact=nombre).exclude(pk=categoria.pk).exists():
+            return JsonResponse({"success": False, "error": "Ya existe una categoría con ese nombre."}, status=400)
+
+        categoria.nombre = nombre
+        categoria.save(update_fields=["nombre"])
+        return JsonResponse(
+            {
+                "success": True,
+                "categoria": {
+                    "id": categoria.id,
+                    "nombre": categoria.nombre,
+                    "ticket_count": categoria.ticket_set.count(),
+                },
+            }
+        )
+
+    def delete(self, request, pk):
+        try:
+            categoria = Categoria.objects.get(pk=pk)
+            if categoria.ticket_set.exists():
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": "No se puede eliminar esta categoría porque está asignada a uno o más tickets.",
+                    },
+                    status=400,
+                )
+            categoria.delete()
+        except Categoria.DoesNotExist:
+            return JsonResponse({"success": False, "error": "Categoría no encontrada."}, status=400)
+
+        return JsonResponse({"success": True, "categoria_id": pk})
 
 
 class ActualizarTicketView(StaffRequiredMixin, View):

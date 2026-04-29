@@ -2,6 +2,11 @@
 
 {% block title %}Kanban | Tickets{% endblock %}
 
+{% block topbar_actions %}
+  <button type="button" class="button button-secondary" id="open-category-modal">+ Crear categoría</button>
+  <a class="logout-link" href="{% url 'tickets:logout' %}">Cerrar sesión</a>
+{% endblock %}
+
 {% block content %}
   <style>
     .kanban-ticket {
@@ -98,6 +103,108 @@
     .kanban-card-edit:hover {
       border-color: var(--line-strong);
       transform: translateY(-1px);
+    }
+
+    .category-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .category-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .category-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .category-row.is-editing {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .category-name {
+      font-weight: 700;
+    }
+
+    .category-actions,
+    .category-edit-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-button,
+    .text-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .icon-button {
+      width: 34px;
+      min-width: 34px;
+      padding: 0;
+      font-size: 0.92rem;
+    }
+
+    .text-button {
+      padding: 0 12px;
+      color: #b22d2d;
+      border-color: #e1b4b4;
+    }
+
+    .category-edit-form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .category-edit-form[hidden],
+    .category-display[hidden],
+    .category-empty[hidden],
+    .category-feedback[hidden] {
+      display: none;
+    }
+
+    .category-feedback {
+      margin: 0 0 16px;
+      padding: 10px 12px;
+      border: 1px solid #e2b9b9;
+      border-radius: 8px;
+      background: #fff0f0;
+      color: #b22d2d;
+      font-size: 0.92rem;
+    }
+
+    .category-empty {
+      margin: 0;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .category-note {
+      color: var(--muted);
+      font-size: 0.9rem;
     }
   </style>
 
@@ -228,6 +335,75 @@
       </div>
     </section>
   </div>
+
+  <div class="modal-overlay" id="category-modal" hidden>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="category-modal-title">
+      <button type="button" class="modal-close" data-close-category-modal aria-label="Cerrar">×</button>
+      <div class="modal-header">
+        <div>
+          <h2 id="category-modal-title">Categorías</h2>
+          <p class="modal-meta">Crea, edita o elimina categorías disponibles para todos los usuarios.</p>
+        </div>
+      </div>
+
+      <p class="category-feedback" id="category-feedback" hidden></p>
+
+      <section class="modal-section">
+        <h3>Nueva categoría</h3>
+        <form class="stack-form" id="category-create-form">
+          <div class="field-group">
+            <label for="category-create-input">Nombre</label>
+            <input id="category-create-input" name="nombre" type="text" maxlength="100" autocomplete="off">
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="button button-primary" id="category-create-submit" disabled>Guardar categoría</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="modal-section">
+        <div class="category-toolbar">
+          <h3>Categorías actuales</h3>
+        </div>
+        <p class="category-empty" id="category-empty" hidden>No hay categorías registradas.</p>
+        <ul class="category-list" id="category-list">
+          {% for categoria in categorias %}
+            <li class="category-row" data-categoria-id="{{ categoria.id }}" data-categoria-nombre="{{ categoria.nombre }}" data-ticket-count="{{ categoria.ticket_count }}">
+              <div class="category-display">
+                <span class="category-name">{{ categoria.nombre }}</span>
+                <span class="category-note">{{ categoria.ticket_count }} ticket{{ categoria.ticket_count|pluralize:"s" }}</span>
+              </div>
+              <div class="category-actions category-display">
+                <button type="button" class="icon-button category-edit-trigger" aria-label="Editar categoría">✏</button>
+                <button type="button" class="text-button category-delete-trigger">Eliminar</button>
+              </div>
+              <form class="category-edit-form" hidden>
+                <div class="field-group">
+                  <label>Editar nombre</label>
+                  <input type="text" name="nombre" maxlength="100" autocomplete="off">
+                </div>
+                <div class="category-edit-actions">
+                  <button type="button" class="button button-secondary category-cancel-trigger">Cancelar</button>
+                  <button type="submit" class="button button-primary category-save-trigger" disabled>Guardar</button>
+                </div>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="category-delete-confirm-modal" hidden>
+    <section class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="category-delete-confirm-title">
+      <h2 id="category-delete-confirm-title">Eliminar categoría</h2>
+      <p id="category-delete-confirm-copy">¿Seguro que quieres eliminar esta categoría? Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button type="button" class="button button-secondary" id="category-delete-cancel">Cancelar</button>
+        <button type="button" class="button danger-solid" id="category-delete-confirm">Sí eliminar</button>
+      </div>
+    </section>
+  </div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -245,6 +421,8 @@
       const ticketModal = document.getElementById("ticket-modal");
       const dragConfirmModal = document.getElementById("drag-confirm-modal");
       const deleteConfirmModal = document.getElementById("delete-confirm-modal");
+      const categoryModal = document.getElementById("category-modal");
+      const categoryDeleteConfirmModal = document.getElementById("category-delete-confirm-modal");
       const editForm = document.getElementById("ticket-edit-form");
       const modalTitle = document.getElementById("modal-title");
       const modalMeta = document.getElementById("modal-meta");
@@ -258,9 +436,18 @@
       const dragConfirmCopy = document.getElementById("drag-confirm-copy");
       const modalResponseCounter = document.getElementById("modal-response-counter");
       const dragResponseCounter = document.getElementById("drag-response-counter");
+      const categoryFeedback = document.getElementById("category-feedback");
+      const categoryList = document.getElementById("category-list");
+      const categoryEmpty = document.getElementById("category-empty");
+      const categoryCreateForm = document.getElementById("category-create-form");
+      const categoryCreateInput = document.getElementById("category-create-input");
+      const categoryCreateSubmit = document.getElementById("category-create-submit");
+      const categoryDeleteConfirmCopy = document.getElementById("category-delete-confirm-copy");
+      const categoryListUrl = "{% url 'tickets:categorias' %}";
 
       let activeCard = null;
       let pendingDrag = null;
+      let pendingCategoryDelete = null;
 
       function getCookie(name) {
         const cookies = document.cookie ? document.cookie.split(";") : [];
@@ -284,6 +471,23 @@
         }).then((response) => response.json().then((data) => ({ ok: response.ok, data })));
       }
 
+      function getJSON(url) {
+        return fetch(url, {
+          headers: {
+            "X-Requested-With": "XMLHttpRequest",
+          },
+        }).then((response) => response.json().then((data) => ({ ok: response.ok, data })));
+      }
+
+      function deleteJSON(url) {
+        return fetch(url, {
+          method: "DELETE",
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+        }).then((response) => response.json().then((data) => ({ ok: response.ok, data })));
+      }
+
       function openOverlay(overlay) {
         overlay.hidden = false;
         document.body.classList.add("modal-open");
@@ -291,7 +495,13 @@
 
       function closeOverlay(overlay) {
         overlay.hidden = true;
-        if (ticketModal.hidden && dragConfirmModal.hidden && deleteConfirmModal.hidden) {
+        if (
+          ticketModal.hidden &&
+          dragConfirmModal.hidden &&
+          deleteConfirmModal.hidden &&
+          categoryModal.hidden &&
+          categoryDeleteConfirmModal.hidden
+        ) {
           document.body.classList.remove("modal-open");
         }
       }
@@ -312,6 +522,158 @@
         card.dataset.estado = estado;
         card.dataset.estadoLabel = estadoLabels[estado] || estado;
         card.dataset.respuestaAdmin = respuestaAdmin;
+      }
+
+      function showCategoryFeedback(message) {
+        categoryFeedback.textContent = message;
+        categoryFeedback.hidden = false;
+      }
+
+      function clearCategoryFeedback() {
+        categoryFeedback.hidden = true;
+        categoryFeedback.textContent = "";
+      }
+
+      function syncCategoryEmptyState() {
+        categoryEmpty.hidden = categoryList.children.length > 0;
+      }
+
+      function updateCreateButtonState() {
+        categoryCreateSubmit.disabled = !categoryCreateInput.value.trim();
+      }
+
+      function sortCategoryRows() {
+        const rows = Array.from(categoryList.querySelectorAll(".category-row"));
+        rows
+          .sort((left, right) => left.dataset.categoriaNombre.localeCompare(right.dataset.categoriaNombre, "es"))
+          .forEach((row) => categoryList.appendChild(row));
+      }
+
+      function renderCategoryList(categorias) {
+        categoryList.innerHTML = "";
+        categorias.forEach((categoria) => {
+          categoryList.appendChild(buildCategoryRow(categoria));
+        });
+        sortCategoryRows();
+        syncCategoryEmptyState();
+      }
+
+      function loadCategories() {
+        return getJSON(categoryListUrl).then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            showCategoryFeedback(data.error || "No se pudieron cargar las categorías.");
+            return;
+          }
+          clearCategoryFeedback();
+          renderCategoryList(data.categorias);
+        });
+      }
+
+      function buildCategoryRow(categoria) {
+        const item = document.createElement("li");
+        item.className = "category-row";
+        item.dataset.categoriaId = categoria.id;
+        item.dataset.categoriaNombre = categoria.nombre;
+        item.dataset.ticketCount = categoria.ticket_count || 0;
+        item.innerHTML = `
+          <div class="category-display">
+            <span class="category-name"></span>
+            <span class="category-note"></span>
+          </div>
+          <div class="category-actions category-display">
+            <button type="button" class="icon-button category-edit-trigger" aria-label="Editar categoría">✏</button>
+            <button type="button" class="text-button category-delete-trigger">Eliminar</button>
+          </div>
+          <form class="category-edit-form" hidden>
+            <div class="field-group">
+              <label>Editar nombre</label>
+              <input type="text" name="nombre" maxlength="100" autocomplete="off">
+            </div>
+            <div class="category-edit-actions">
+              <button type="button" class="button button-secondary category-cancel-trigger">Cancelar</button>
+              <button type="submit" class="button button-primary category-save-trigger" disabled>Guardar</button>
+            </div>
+          </form>
+        `;
+
+        hydrateCategoryRow(item, categoria.nombre);
+        return item;
+      }
+
+      function hydrateCategoryRow(row, nombre) {
+        row.dataset.categoriaNombre = nombre;
+        row.querySelector(".category-name").textContent = nombre;
+        const ticketCount = Number(row.dataset.ticketCount || 0);
+        row.querySelector(".category-note").textContent = `${ticketCount} ticket${ticketCount === 1 ? "" : "s"}`;
+
+        const editForm = row.querySelector(".category-edit-form");
+        const editInput = editForm.querySelector('input[name="nombre"]');
+        const saveButton = editForm.querySelector(".category-save-trigger");
+        const displayNodes = row.querySelectorAll(".category-display");
+
+        function closeEdit() {
+          row.classList.remove("is-editing");
+          editForm.hidden = true;
+          displayNodes.forEach((node) => {
+            node.hidden = false;
+          });
+          editInput.value = row.dataset.categoriaNombre;
+          saveButton.disabled = true;
+        }
+
+        function openEdit() {
+          clearCategoryFeedback();
+          row.classList.add("is-editing");
+          displayNodes.forEach((node) => {
+            node.hidden = true;
+          });
+          editForm.hidden = false;
+          editInput.value = row.dataset.categoriaNombre;
+          saveButton.disabled = true;
+          editInput.focus();
+          editInput.select();
+        }
+
+        function updateSaveState() {
+          const nextValue = editInput.value.trim();
+          saveButton.disabled = !nextValue || nextValue === row.dataset.categoriaNombre;
+        }
+
+        row.querySelector(".category-edit-trigger").addEventListener("click", openEdit);
+        row.querySelector(".category-cancel-trigger").addEventListener("click", closeEdit);
+        row.querySelector(".category-delete-trigger").addEventListener("click", () => {
+          clearCategoryFeedback();
+          if (Number(row.dataset.ticketCount || 0) > 0) {
+            showCategoryFeedback("No se puede eliminar esta categoría porque está asignada a uno o más tickets.");
+            return;
+          }
+          pendingCategoryDelete = row;
+          categoryDeleteConfirmCopy.textContent = `¿Seguro que quieres eliminar la categoría "${row.dataset.categoriaNombre}"? Esta acción no se puede deshacer.`;
+          openOverlay(categoryDeleteConfirmModal);
+        });
+
+        editInput.addEventListener("input", updateSaveState);
+        editForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const nextValue = editInput.value.trim();
+          if (!nextValue || nextValue === row.dataset.categoriaNombre) {
+            return;
+          }
+
+          postJSON(`${categoryListUrl}${row.dataset.categoriaId}/`, { nombre: nextValue }).then(({ ok, data }) => {
+            if (!ok || !data.success) {
+              showCategoryFeedback(data.error || "No se pudo actualizar la categoría.");
+              return;
+            }
+            clearCategoryFeedback();
+            row.dataset.categoriaNombre = data.categoria.nombre;
+            row.dataset.ticketCount = data.categoria.ticket_count || 0;
+            row.querySelector(".category-name").textContent = data.categoria.nombre;
+            row.querySelector(".category-note").textContent = `${row.dataset.ticketCount} ticket${Number(row.dataset.ticketCount) === 1 ? "" : "s"}`;
+            closeEdit();
+            sortCategoryRows();
+          });
+        });
       }
 
       function moveCardToEstado(card, estado) {
@@ -376,6 +738,10 @@
         button.addEventListener("click", () => closeOverlay(ticketModal));
       });
 
+      document.querySelectorAll("[data-close-category-modal]").forEach((button) => {
+        button.addEventListener("click", () => closeOverlay(categoryModal));
+      });
+
       document.querySelectorAll(".modal-overlay").forEach((overlay) => {
         overlay.addEventListener("click", (event) => {
           if (event.target === overlay) {
@@ -383,10 +749,74 @@
               restoreCard(pendingDrag.card, pendingDrag.from, pendingDrag.oldIndex);
               pendingDrag = null;
             }
+            if (overlay === categoryDeleteConfirmModal) {
+              pendingCategoryDelete = null;
+            }
             closeOverlay(overlay);
           }
         });
       });
+
+      document.getElementById("open-category-modal").addEventListener("click", () => {
+        clearCategoryFeedback();
+        updateCreateButtonState();
+        openOverlay(categoryModal);
+        loadCategories();
+      });
+
+      categoryCreateInput.addEventListener("input", updateCreateButtonState);
+
+      categoryCreateForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const nombre = categoryCreateInput.value.trim();
+        if (!nombre) {
+          return;
+        }
+
+        postJSON(categoryListUrl, { nombre: nombre }).then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            showCategoryFeedback(data.error || "No se pudo crear la categoría.");
+            return;
+          }
+          clearCategoryFeedback();
+          categoryList.appendChild(buildCategoryRow(data.categoria));
+          sortCategoryRows();
+          categoryCreateInput.value = "";
+          updateCreateButtonState();
+          syncCategoryEmptyState();
+        });
+      });
+
+      document.getElementById("category-delete-cancel").addEventListener("click", () => {
+        pendingCategoryDelete = null;
+        closeOverlay(categoryDeleteConfirmModal);
+      });
+
+      document.getElementById("category-delete-confirm").addEventListener("click", () => {
+        if (!pendingCategoryDelete) {
+          return;
+        }
+
+        const row = pendingCategoryDelete;
+        deleteJSON(`${categoryListUrl}${row.dataset.categoriaId}/`).then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            showCategoryFeedback(data.error || "No se pudo eliminar la categoría.");
+            pendingCategoryDelete = null;
+            closeOverlay(categoryDeleteConfirmModal);
+            return;
+          }
+          row.remove();
+          pendingCategoryDelete = null;
+          syncCategoryEmptyState();
+          closeOverlay(categoryDeleteConfirmModal);
+        });
+      });
+
+      renderCategoryList([
+        {% for categoria in categorias %}
+          { id: {{ categoria.id }}, nombre: "{{ categoria.nombre|escapejs }}", ticket_count: {{ categoria.ticket_count }} },
+        {% endfor %}
+      ]);
 
       editForm.addEventListener("submit", (event) => {
         event.preventDefault();

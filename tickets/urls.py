@@ -4,6 +4,8 @@ from django.views.generic import RedirectView
 
 from .views import (
     ActualizarTicketView,
+    CategoriaListCreateView,
+    CategoriaUpdateDeleteView,
     CrearTicketView,
     DetalleTicketView,
     EliminarTicketView,
@@ -23,6 +25,8 @@ urlpatterns = [
     path("ticket/crear/", CrearTicketView.as_view(), name="crear_ticket"),
     path("mis-tickets/<int:pk>/", DetalleTicketView.as_view(), name="detalle_ticket"),
     path("admin-panel/", KanbanView.as_view(), name="kanban"),
+    path("admin-panel/categorias/", CategoriaListCreateView.as_view(), name="categorias"),
+    path("admin-panel/categorias/<int:pk>/", CategoriaUpdateDeleteView.as_view(), name="categoria_detalle"),
     path("admin-panel/ticket/<int:pk>/actualizar/", ActualizarTicketView.as_view(), name="actualizar_ticket"),
     path("admin-panel/ticket/<int:pk>/eliminar/", EliminarTicketView.as_view(), name="eliminar_ticket"),
 ]

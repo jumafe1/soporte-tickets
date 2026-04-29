@@ -33,6 +33,8 @@ También se separaron claramente los roles:
 
 Esta separación permite que cada tipo de usuario vea solo las acciones que le corresponden.
 
+Aunque el sistema conserva el panel oficial de Django en `/admin/` para administrar modelos como respaldo técnico, se decidió construir una vista Kanban personalizada para el administrador. La razón principal es de usabilidad: el Django Admin permite revisar tickets, cambiar su estado y registrar respuestas, pero su interfaz es genérica. En cambio, el Kanban ofrece una lectura mucho más rápida del estado global de los tickets, facilita entender en qué etapa está cada caso y hace más natural la gestión operativa diaria del soporte.
+
 ## 3. Modelos y tablas creadas
 
 El sistema utiliza los modelos propios `Categoria` y `Ticket`, además del modelo `User` incluido por Django Auth.
@@ -116,6 +118,7 @@ El flujo del administrador es:
 4. El administrador puede abrir el detalle desde el ícono de edición de cada card.
 5. Puede cambiar el estado, responder al usuario o eliminar un ticket.
 6. También puede arrastrar tickets entre columnas y confirmar el cambio de estado.
+7. Si lo necesita, también puede usar el panel `/admin/` de Django como alternativa administrativa de respaldo.
 
 ## 5. Asunciones realizadas durante el desarrollo
 
