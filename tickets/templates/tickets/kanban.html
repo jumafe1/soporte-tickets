@@ -1,0 +1,505 @@
+{% extends "tickets/base.html" %}
+
+{% block title %}Kanban | Tickets{% endblock %}
+
+{% block content %}
+  <style>
+    .kanban-ticket {
+      position: relative;
+      padding-right: 44px;
+      cursor: grab;
+      transition: transform 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+    }
+
+    .kanban-ticket:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 28px rgba(53, 49, 45, 0.12);
+    }
+
+    .kanban-ticket:active {
+      cursor: grabbing;
+    }
+
+    .kanban-ghost {
+      opacity: 0.35;
+    }
+
+    .kanban-chosen {
+      border-color: var(--button);
+    }
+
+    .kanban-column {
+      min-height: 260px;
+      border-width: 2px;
+      border-style: solid;
+    }
+
+    .kanban-stack {
+      min-height: 200px;
+      align-content: start;
+    }
+
+    .kanban-column[data-estado="abierto"] {
+      border-color: #2e69e8;
+    }
+
+    .kanban-column[data-estado="abierto"] h2 {
+      color: #2e69e8;
+    }
+
+    .kanban-column[data-estado="en_espera"] {
+      border-color: #bf7a00;
+    }
+
+    .kanban-column[data-estado="en_espera"] h2 {
+      color: #bf7a00;
+    }
+
+    .kanban-column[data-estado="aprobado"] {
+      border-color: #23864e;
+    }
+
+    .kanban-column[data-estado="aprobado"] h2 {
+      color: #23864e;
+    }
+
+    .kanban-column[data-estado="rechazado"] {
+      border-color: #d24343;
+    }
+
+    .kanban-column[data-estado="rechazado"] h2 {
+      color: #d24343;
+    }
+
+    .kanban-card-edit {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 253, 249, 0.86);
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 0.82rem;
+      line-height: 1;
+      opacity: 0.38;
+      transition: opacity 150ms ease, border-color 150ms ease, transform 150ms ease;
+    }
+
+    .kanban-ticket:hover .kanban-card-edit,
+    .kanban-card-edit:focus-visible {
+      opacity: 1;
+    }
+
+    .kanban-card-edit:hover {
+      border-color: var(--line-strong);
+      transform: translateY(-1px);
+    }
+  </style>
+
+  <div class="section-header">
+    <div>
+      <h1>Kanban</h1>
+      <p class="section-copy">Vista general del estado de todos los tickets.</p>
+    </div>
+  </div>
+
+  <section class="kanban-board" aria-label="Tablero de tickets">
+    <article class="kanban-column" data-estado="abierto">
+      <h2>Abiertos</h2>
+      <div class="kanban-stack" data-estado="abierto">
+        {% for ticket in abiertos %}
+          {% include "tickets/partials/kanban_card.html" with ticket=ticket %}
+        {% empty %}
+          <p class="kanban-empty">Sin tickets.</p>
+        {% endfor %}
+      </div>
+    </article>
+    <article class="kanban-column" data-estado="en_espera">
+      <h2>En espera</h2>
+      <div class="kanban-stack" data-estado="en_espera">
+        {% for ticket in en_espera %}
+          {% include "tickets/partials/kanban_card.html" with ticket=ticket %}
+        {% empty %}
+          <p class="kanban-empty">Sin tickets.</p>
+        {% endfor %}
+      </div>
+    </article>
+    <article class="kanban-column" data-estado="aprobado">
+      <h2>Aprobados</h2>
+      <div class="kanban-stack" data-estado="aprobado">
+        {% for ticket in aprobados %}
+          {% include "tickets/partials/kanban_card.html" with ticket=ticket %}
+        {% empty %}
+          <p class="kanban-empty">Sin tickets.</p>
+        {% endfor %}
+      </div>
+    </article>
+    <article class="kanban-column" data-estado="rechazado">
+      <h2>Rechazados</h2>
+      <div class="kanban-stack" data-estado="rechazado">
+        {% for ticket in rechazados %}
+          {% include "tickets/partials/kanban_card.html" with ticket=ticket %}
+        {% empty %}
+          <p class="kanban-empty">Sin tickets.</p>
+        {% endfor %}
+      </div>
+    </article>
+  </section>
+
+  <div class="modal-overlay" id="ticket-modal" hidden>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button type="button" class="modal-close" data-close-ticket-modal aria-label="Cerrar">×</button>
+      <div class="modal-header">
+        <div>
+          <h2 id="modal-title"></h2>
+          <p class="modal-meta" id="modal-meta"></p>
+        </div>
+        <span class="status-pill" id="modal-status"></span>
+      </div>
+
+      <dl class="modal-facts">
+        <dt>Prioridad</dt>
+        <dd id="modal-priority"></dd>
+        <dt>Fecha</dt>
+        <dd id="modal-date"></dd>
+      </dl>
+
+      <section class="modal-section">
+        <h3>Descripción</h3>
+        <p id="modal-description"></p>
+      </section>
+
+      <form class="stack-form" id="ticket-edit-form">
+        <div class="field-group">
+          <label for="modal-response">Respuesta al usuario</label>
+          <textarea id="modal-response" name="respuesta_admin" maxlength="150" data-character-limit="150"></textarea>
+          <p class="field-help" id="modal-response-counter">0/150 caracteres. Máximo 150 caracteres.</p>
+        </div>
+
+        <div class="field-group">
+          <label for="modal-state">Estado</label>
+          <select id="modal-state" name="estado">
+            <option value="abierto">Abierto</option>
+            <option value="en_espera">En espera</option>
+            <option value="aprobado">Aprobado</option>
+            <option value="rechazado">Rechazado</option>
+          </select>
+        </div>
+
+        <button type="submit" class="button button-primary">Guardar cambios</button>
+      </form>
+
+      <section class="danger-zone">
+        <h3>Zona de peligro</h3>
+        <p>Eliminar este ticket lo removerá definitivamente del tablero.</p>
+        <button type="button" class="button danger-outline" id="delete-ticket-trigger">Eliminar ticket</button>
+      </section>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="drag-confirm-modal" hidden>
+    <section class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="drag-confirm-title">
+      <h2 id="drag-confirm-title">Confirmar cambio de estado</h2>
+      <p id="drag-confirm-copy"></p>
+      <div class="field-group">
+        <label for="drag-response">Mensaje al usuario</label>
+        <textarea id="drag-response" placeholder="Opcional" maxlength="150" data-character-limit="150"></textarea>
+        <p class="field-help" id="drag-response-counter">0/150 caracteres. Máximo 150 caracteres.</p>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="button button-secondary" id="drag-cancel">Cancelar</button>
+        <button type="button" class="button button-primary" id="drag-confirm">Confirmar</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay" id="delete-confirm-modal" hidden>
+    <section class="confirm-card" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title">
+      <h2 id="delete-confirm-title">Eliminar ticket</h2>
+      <p>¿Seguro que quieres eliminar este ticket? Esta acción no se puede deshacer.</p>
+      <div class="modal-actions">
+        <button type="button" class="button button-secondary" id="delete-cancel">Cancelar</button>
+        <button type="button" class="button danger-solid" id="delete-confirm">Sí eliminar</button>
+      </div>
+    </section>
+  </div>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+  <script>
+    (function () {
+      const estadoLabels = {
+        abierto: "Abierto",
+        en_espera: "En espera",
+        aprobado: "Aprobado",
+        rechazado: "Rechazado",
+      };
+      const respuestaAdminMaxLength = 150;
+
+      const ticketModal = document.getElementById("ticket-modal");
+      const dragConfirmModal = document.getElementById("drag-confirm-modal");
+      const deleteConfirmModal = document.getElementById("delete-confirm-modal");
+      const editForm = document.getElementById("ticket-edit-form");
+      const modalTitle = document.getElementById("modal-title");
+      const modalMeta = document.getElementById("modal-meta");
+      const modalStatus = document.getElementById("modal-status");
+      const modalPriority = document.getElementById("modal-priority");
+      const modalDate = document.getElementById("modal-date");
+      const modalDescription = document.getElementById("modal-description");
+      const modalResponse = document.getElementById("modal-response");
+      const modalState = document.getElementById("modal-state");
+      const dragResponse = document.getElementById("drag-response");
+      const dragConfirmCopy = document.getElementById("drag-confirm-copy");
+      const modalResponseCounter = document.getElementById("modal-response-counter");
+      const dragResponseCounter = document.getElementById("drag-response-counter");
+
+      let activeCard = null;
+      let pendingDrag = null;
+
+      function getCookie(name) {
+        const cookies = document.cookie ? document.cookie.split(";") : [];
+        for (const cookie of cookies) {
+          const trimmed = cookie.trim();
+          if (trimmed.startsWith(name + "=")) {
+            return decodeURIComponent(trimmed.slice(name.length + 1));
+          }
+        }
+        return "";
+      }
+
+      function postJSON(url, payload) {
+        return fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+          body: JSON.stringify(payload),
+        }).then((response) => response.json().then((data) => ({ ok: response.ok, data })));
+      }
+
+      function openOverlay(overlay) {
+        overlay.hidden = false;
+        document.body.classList.add("modal-open");
+      }
+
+      function closeOverlay(overlay) {
+        overlay.hidden = true;
+        if (ticketModal.hidden && dragConfirmModal.hidden && deleteConfirmModal.hidden) {
+          document.body.classList.remove("modal-open");
+        }
+      }
+
+      function setStatusBadge(element, estado) {
+        element.className = "status-pill status-" + estado;
+        element.textContent = estadoLabels[estado] || estado;
+      }
+
+      function updateCharacterCounter(field, counter) {
+        if (field.value.length > respuestaAdminMaxLength) {
+          field.value = field.value.slice(0, respuestaAdminMaxLength);
+        }
+        counter.textContent = `${field.value.length}/${respuestaAdminMaxLength} caracteres. Máximo ${respuestaAdminMaxLength} caracteres.`;
+      }
+
+      function updateCardDataset(card, estado, respuestaAdmin) {
+        card.dataset.estado = estado;
+        card.dataset.estadoLabel = estadoLabels[estado] || estado;
+        card.dataset.respuestaAdmin = respuestaAdmin;
+      }
+
+      function moveCardToEstado(card, estado) {
+        const targetStack = document.querySelector(`.kanban-stack[data-estado="${estado}"]`);
+        if (targetStack && card.parentElement !== targetStack) {
+          removeEmptyMessage(targetStack);
+          targetStack.appendChild(card);
+        }
+      }
+
+      function removeEmptyMessage(stack) {
+        const empty = stack.querySelector(".kanban-empty");
+        if (empty) {
+          empty.remove();
+        }
+      }
+
+      function restoreCard(card, from, oldIndex) {
+        const children = Array.from(from.children).filter((child) => child !== card && !child.classList.contains("kanban-empty"));
+        const before = children[oldIndex] || null;
+        from.insertBefore(card, before);
+      }
+
+      function openTicketModal(card) {
+        activeCard = card;
+        modalTitle.textContent = card.dataset.titulo;
+        modalMeta.textContent = `${card.dataset.usuario} · ${card.dataset.categoria}`;
+        modalPriority.textContent = card.dataset.prioridad;
+        modalDate.textContent = card.dataset.fecha;
+        modalDescription.textContent = card.dataset.descripcion;
+        modalResponse.value = card.dataset.respuestaAdmin || "";
+        updateCharacterCounter(modalResponse, modalResponseCounter);
+        modalState.value = card.dataset.estado;
+        setStatusBadge(modalStatus, card.dataset.estado);
+        openOverlay(ticketModal);
+      }
+
+      modalResponse.addEventListener("input", () => updateCharacterCounter(modalResponse, modalResponseCounter));
+      dragResponse.addEventListener("input", () => updateCharacterCounter(dragResponse, dragResponseCounter));
+
+      document.querySelectorAll(".kanban-ticket").forEach((card) => {
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "kanban-card-edit";
+        editButton.dataset.noDrag = "true";
+        editButton.setAttribute("aria-label", "Editar ticket");
+        editButton.textContent = "✏";
+
+        ["pointerdown", "mousedown", "touchstart"].forEach((eventName) => {
+          editButton.addEventListener(eventName, (event) => event.stopPropagation());
+        });
+        editButton.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openTicketModal(card);
+        });
+
+        card.appendChild(editButton);
+      });
+
+      document.querySelectorAll("[data-close-ticket-modal]").forEach((button) => {
+        button.addEventListener("click", () => closeOverlay(ticketModal));
+      });
+
+      document.querySelectorAll(".modal-overlay").forEach((overlay) => {
+        overlay.addEventListener("click", (event) => {
+          if (event.target === overlay) {
+            if (overlay === dragConfirmModal && pendingDrag) {
+              restoreCard(pendingDrag.card, pendingDrag.from, pendingDrag.oldIndex);
+              pendingDrag = null;
+            }
+            closeOverlay(overlay);
+          }
+        });
+      });
+
+      editForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!activeCard) {
+          return;
+        }
+
+        const estado = modalState.value;
+        const respuestaAdmin = modalResponse.value;
+        postJSON(activeCard.dataset.updateUrl, { estado: estado, respuesta_admin: respuestaAdmin }).then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            alert(data.error || "No se pudo actualizar el ticket.");
+            return;
+          }
+          updateCardDataset(activeCard, data.nuevo_estado, respuestaAdmin);
+          setStatusBadge(modalStatus, data.nuevo_estado);
+          moveCardToEstado(activeCard, data.nuevo_estado);
+          closeOverlay(ticketModal);
+        });
+      });
+
+      document.getElementById("delete-ticket-trigger").addEventListener("click", () => {
+        openOverlay(deleteConfirmModal);
+      });
+
+      document.getElementById("delete-cancel").addEventListener("click", () => {
+        closeOverlay(deleteConfirmModal);
+      });
+
+      document.getElementById("delete-confirm").addEventListener("click", () => {
+        if (!activeCard) {
+          return;
+        }
+
+        postJSON(activeCard.dataset.deleteUrl, {}).then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            alert(data.error || "No se pudo eliminar el ticket.");
+            return;
+          }
+          activeCard.remove();
+          activeCard = null;
+          closeOverlay(deleteConfirmModal);
+          closeOverlay(ticketModal);
+        });
+      });
+
+      document.querySelectorAll(".kanban-stack").forEach((stack) => {
+        new Sortable(stack, {
+          group: "tickets-kanban",
+          animation: 150,
+          emptyInsertThreshold: 60,
+          ghostClass: "kanban-ghost",
+          chosenClass: "kanban-chosen",
+          draggable: ".kanban-ticket",
+          filter: "[data-no-drag]",
+          onEnd: function (event) {
+            const card = event.item;
+            const fromEstado = event.from.dataset.estado;
+            const toEstado = event.to.dataset.estado;
+
+            if (fromEstado === toEstado) {
+              return;
+            }
+
+            pendingDrag = {
+              card: card,
+              from: event.from,
+              oldIndex: event.oldIndex,
+              toEstado: toEstado,
+            };
+            dragResponse.value = "";
+            updateCharacterCounter(dragResponse, dragResponseCounter);
+            dragConfirmCopy.textContent = `Mover este ticket a "${estadoLabels[toEstado]}"`;
+            openOverlay(dragConfirmModal);
+          },
+        });
+      });
+
+      document.getElementById("drag-cancel").addEventListener("click", () => {
+        if (pendingDrag) {
+          restoreCard(pendingDrag.card, pendingDrag.from, pendingDrag.oldIndex);
+          pendingDrag = null;
+        }
+        closeOverlay(dragConfirmModal);
+      });
+
+      document.getElementById("drag-confirm").addEventListener("click", () => {
+        if (!pendingDrag) {
+          return;
+        }
+
+        const card = pendingDrag.card;
+        const estado = pendingDrag.toEstado;
+        const respuestaAdmin = dragResponse.value.trim();
+        const payload = { estado: estado };
+        if (respuestaAdmin) {
+          payload.respuesta_admin = respuestaAdmin;
+        }
+
+        postJSON(card.dataset.updateUrl, payload).then(({ ok, data }) => {
+          if (!ok || !data.success) {
+            alert(data.error || "No se pudo actualizar el ticket.");
+            restoreCard(card, pendingDrag.from, pendingDrag.oldIndex);
+            pendingDrag = null;
+            closeOverlay(dragConfirmModal);
+            return;
+          }
+          updateCardDataset(card, data.nuevo_estado, respuestaAdmin || card.dataset.respuestaAdmin || "");
+          removeEmptyMessage(card.parentElement);
+          pendingDrag = null;
+          closeOverlay(dragConfirmModal);
+        });
+      });
+    })();
+  </script>
+{% endblock %}

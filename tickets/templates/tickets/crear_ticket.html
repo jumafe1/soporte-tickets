@@ -1,0 +1,57 @@
+{% extends "tickets/base.html" %}
+
+{% block title %}Crear ticket | Tickets{% endblock %}
+
+{% block content %}
+  <div class="section-header">
+    <div>
+      <h1>Crear ticket</h1>
+      <p class="section-copy">Describe el problema y asígnalo a la categoría correcta.</p>
+    </div>
+  </div>
+
+  <form method="post" class="stack-form">
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.name == "titulo" %}
+          <p class="field-help" data-counter-for="{{ field.id_for_label }}">0/50 caracteres. Máximo 50 caracteres.</p>
+        {% elif field.name == "descripcion" %}
+          <p class="field-help" data-counter-for="{{ field.id_for_label }}">0/120 caracteres. Máximo 120 caracteres.</p>
+        {% endif %}
+        {% if field.errors %}
+          <p class="field-error">{{ field.errors|join:", " }}</p>
+        {% endif %}
+      </div>
+    {% endfor %}
+    <div class="form-actions">
+      <a class="button button-secondary" href="{% url 'tickets:mis_tickets' %}">Cancelar</a>
+      <button type="submit" class="button button-primary">Guardar</button>
+    </div>
+  </form>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    (function () {
+      document.querySelectorAll("[data-character-limit]").forEach((field) => {
+        const limit = Number(field.dataset.characterLimit);
+        const counter = document.querySelector(`[data-counter-for="${field.id}"]`);
+
+        function updateCounter() {
+          if (field.value.length > limit) {
+            field.value = field.value.slice(0, limit);
+          }
+          if (counter) {
+            counter.textContent = `${field.value.length}/${limit} caracteres. Máximo ${limit} caracteres.`;
+          }
+        }
+
+        field.addEventListener("input", updateCounter);
+        updateCounter();
+      });
+    })();
+  </script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "tickets/base.html" %}
+
+{% block title %}Mis tickets | Tickets{% endblock %}
+
+{% block content %}
+  <div class="section-header">
+    <div>
+      <h1>Mis tickets <span class="muted-count">({{ conteo }})</span></h1>
+    </div>
+  </div>
+
+  <nav class="status-filter" aria-label="Filtrar tickets por estado">
+    <a class="filter-link {% if not request.GET.estado %}filter-link-active{% endif %}" href="{% url 'tickets:mis_tickets' %}">Todos</a>
+    {% for filtro in filtros_estado %}
+      <a class="filter-link {% if request.GET.estado == filtro.valor %}filter-link-active{% endif %}" href="{% url 'tickets:mis_tickets' %}?estado={{ filtro.valor }}">{{ filtro.label }}</a>
+    {% endfor %}
+  </nav>
+
+  {% if tickets %}
+    <div class="tickets-table-wrap">
+      <table class="tickets-table">
+        <thead>
+          <tr>
+            <th scope="col">Título</th>
+            <th scope="col">Categoría</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for ticket in tickets %}
+            <tr onclick="window.location.href='{% url 'tickets:detalle_ticket' ticket.pk %}'">
+              <td class="title-cell">{{ ticket.titulo }}</td>
+              <td>{{ ticket.categoria }}</td>
+              <td><span class="status-pill status-{{ ticket.estado }}">{{ ticket.get_estado_display }}</span></td>
+              <td>{{ ticket.fecha_creacion|date:"d M Y"|lower }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="ticket-cards">
+      {% for ticket in tickets %}
+        <a class="ticket-card" href="{% url 'tickets:detalle_ticket' ticket.pk %}">
+          <div>
+            <h2>{{ ticket.titulo }}</h2>
+            <p>{{ ticket.categoria }} · {{ ticket.fecha_creacion|date:"d M Y"|lower }}</p>
+          </div>
+          <span class="status-pill status-{{ ticket.estado }}">{{ ticket.get_estado_display }}</span>
+        </a>
+      {% endfor %}
+    </div>
+  {% else %}
+    <section class="empty-state">
+      <div class="empty-icon">✉</div>
+      {% if request.GET.estado %}
+        <h2>No hay tickets con este estado</h2>
+        <p>Prueba con otro filtro o vuelve a ver todos los tickets.</p>
+      {% else %}
+        <h2>No tienes tickets aún</h2>
+        <p>Crea tu primer ticket para solicitar soporte</p>
+      {% endif %}
+      <a class="button button-primary" href="{% url 'tickets:crear_ticket' %}">+ Crear ticket</a>
+    </section>
+  {% endif %}
+{% endblock %}

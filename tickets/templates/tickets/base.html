@@ -1,0 +1,50 @@
+{% load static %}
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Tickets{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'tickets/css/styles.css' %}?v=char-limits-20260428">
+</head>
+<body class="{% block body_class %}app-body{% endblock %}">
+  <main class="page-frame">
+    {% block shell %}
+      <section class="app-shell">
+        <header class="app-topbar">
+          {% if request.user.is_staff %}
+            <a class="brand-name" href="{% url 'tickets:kanban' %}">Panel de administración</a>
+          {% else %}
+            <a class="brand-name" href="{% url 'tickets:mis_tickets' %}">Mis tickets</a>
+          {% endif %}
+          <div class="topbar-actions">
+            {% block topbar_actions %}
+              {% if request.user.is_authenticated %}
+                {% if not request.user.is_staff %}
+                  <a class="button button-primary" href="{% url 'tickets:crear_ticket' %}">+ Crear ticket</a>
+                {% endif %}
+                <a class="logout-link" href="{% url 'tickets:logout' %}">Cerrar sesión</a>
+              {% else %}
+                <a class="logout-link" href="{% url 'tickets:login' %}">Ingresar</a>
+              {% endif %}
+            {% endblock %}
+          </div>
+        </header>
+
+        <section class="app-panel">
+          {% if messages %}
+            <ul class="messages">
+              {% for message in messages %}
+                <li>{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+
+          {% block content %}{% endblock %}
+        </section>
+      </section>
+    {% endblock %}
+  </main>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,18 @@
+<article
+  class="kanban-ticket"
+  data-id="{{ ticket.pk }}"
+  data-titulo="{{ ticket.titulo }}"
+  data-usuario="{{ ticket.usuario.username }}"
+  data-categoria="{{ ticket.categoria }}"
+  data-descripcion="{{ ticket.descripcion }}"
+  data-estado="{{ ticket.estado }}"
+  data-estado-label="{{ ticket.get_estado_display }}"
+  data-prioridad="{{ ticket.get_prioridad_display }}"
+  data-fecha="{{ ticket.fecha_creacion|date:'d M Y H:i' }}"
+  data-respuesta-admin="{{ ticket.respuesta_admin|default_if_none:'' }}"
+  data-update-url="{% url 'tickets:actualizar_ticket' ticket.pk %}"
+  data-delete-url="{% url 'tickets:eliminar_ticket' ticket.pk %}"
+>
+  <strong>{{ ticket.titulo }}</strong>
+  <span>{{ ticket.usuario.username }} · {{ ticket.categoria }}</span>
+</article>
